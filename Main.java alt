@@ -1,0 +1,100 @@
+import java.io.*;
+import java.nio.file.*;
+import java.util.*;
+
+public class Main {
+    public static void main(String[] args) {
+        String pokedexDatei = "pokedex.csv";
+        String statusDatei = "status.csv";
+        String htmlDatei = "index.html";
+
+        List<String[]> pokemonListe = new ArrayList<>();
+        List<String> statusListe = new ArrayList<>();
+
+        // 1. Pokédex laden
+        try (BufferedReader reader = new BufferedReader(new FileReader(pokedexDatei))) {
+            String zeile;
+            while ((zeile = reader.readLine()) != null) {
+                String[] teile = zeile.split(",", 2);
+                if (teile.length == 2) {
+                    pokemonListe.add(new String[]{teile[0].trim(), teile[1].trim()});
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("Fehler beim Lesen der pokedex.csv: " + e.getMessage());
+            return;
+        }
+
+        // 2. Status laden (falls vorhanden)
+        if (Files.exists(Paths.get(statusDatei))) {
+            try {
+                statusListe = Files.readAllLines(Paths.get(statusDatei));
+            } catch (IOException e) {
+                System.err.println("Fehler beim Lesen der status.csv: " + e.getMessage());
+            }
+        }
+
+        // 3. Statusliste ggf. auffüllen
+        while (statusListe.size() < pokemonListe.size()) {
+            statusListe.add("false");
+        }
+
+        // 4. HTML-Datei erzeugen
+        try (PrintWriter out = new PrintWriter(new FileWriter(htmlDatei))) {
+            out.println("<!DOCTYPE html>");
+            out.println("<html lang='de'>");
+            out.println("<head>");
+            out.println("<meta charset='UTF-8'>");
+            out.println("<title>Pokémon Checkliste</title>");
+            out.println("<style>");
+            out.println("table { border-collapse: collapse; width: 100%; }");
+            out.println("th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }");
+            out.println("tr:nth-child(even) { background-color: #f9f9f9; }");
+            out.println("input[type='text'] { margin-bottom: 10px; }");
+            out.println("</style>");
+            out.println("</head>");
+            out.println("<body>");
+            out.println("<h1>Meine Pokémon-Checkliste</h1>");
+
+            // Suchfeld + JavaScript
+            out.println("<input type='text' id='searchInput' placeholder='Nach Name suchen...' oninput='searchPokemon()' style='padding:5px; width:300px;'>");
+            out.println("<script>");
+            out.println("function searchPokemon() {");
+            out.println("  const input = document.getElementById('searchInput').value.toLowerCase();");
+            out.println("  const rows = document.querySelectorAll('table tr');");
+            out.println("  let found = false;");
+            out.println("  for (let i = 1; i < rows.length; i++) {");
+            out.println("    const nameCell = rows[i].cells[1];");
+            out.println("    if (nameCell && nameCell.textContent.toLowerCase().includes(input) && !found) {");
+            out.println("      rows[i].scrollIntoView({ behavior: 'smooth', block: 'center' });");
+            out.println("      nameCell.style.backgroundColor = '#ffff88';");
+            out.println("      found = true;");
+            out.println("    } else {");
+            out.println("      if (nameCell) nameCell.style.backgroundColor = '';");  
+            out.println("    }");
+            out.println("  }");
+            out.println("}");
+            out.println("</script>");
+
+            // Tabelle
+            out.println("<table>");
+            out.println("<tr><th>Nr.</th><th>Name</th><th>Gefangen</th></tr>");
+            for (int i = 0; i < pokemonListe.size(); i++) {
+                String[] p = pokemonListe.get(i);
+                String nummer = p[0];
+                String name = p[1];
+                boolean gefangen = Boolean.parseBoolean(statusListe.get(i));
+                out.printf("<tr><td>%s</td><td>%s</td><td><input type='checkbox' %s disabled></td></tr>%n",
+                        nummer, name, gefangen ? "checked" : "");
+            }
+            out.println("</table>");
+
+            out.println("</body>");
+            out.println("</html>");
+
+            System.out.println("✅ index.html wurde erfolgreich erstellt.");
+        } catch (IOException e) {
+            System.err.println("Fehler beim Schreiben von index.html: " + e.getMessage());
+        }
+    }
+}
